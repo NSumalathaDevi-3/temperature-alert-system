@@ -1,0 +1,76 @@
+#TEMPERATURE ALERT MAIL
+
+import Adafruit_DHT
+import RPi.GPIO as GPIO
+import time
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# Setup for DHT11 sensor
+DHT_SENSOR = Adafruit_DHT.DHT11
+DHT_PIN = 4 # GPIO pin where the DHT11 data pin is connected
+
+# Setup for Buzzer
+BUZZER_PIN = 27 # GPIO pin where the buzzer is connected
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(BUZZER_PIN, GPIO.OUT)
+
+# Email settings
+SENDER_EMAIL = "shahinjm0786@gmail.com"
+SENDER_PASSWORD = "qugw yjso gvxe rsme"
+RECEIVER_EMAIL = "gourichandanadasari@gmail .com"
+
+# Function to send an email
+def send_email(temperature):
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = RECEIVER_EMAIL
+        msg['Subject'] = 'Temperature Alert'
+
+        body = f"The current Humidity is {humidity}%, which exceeds the 60% threshold!"
+        msg.attach(MIMEText(body, 'plain'))
+
+        # Send the email
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            text = msg.as_string()
+            server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, text)
+            print("Email sent successfully!")
+    except Exception as e:
+        print(f"Error sending email: {e}")
+
+# Main loop
+try:
+    while True:
+        # Read humidity and temperature from the DHT11 sensor
+        humidity, temperature = Adafruit_DHT.read(DHT_SENSOR, DHT_PIN)
+
+        if temperature is not None:
+            print(f"Temperature: {temperature}°C Humidity: {humidity}%")
+
+            # Check if temperature exceeds 55°C
+            if humidity > 60:
+                print("Humidity exceeded 60°C! Activating buzzer and sending email.")
+               
+                # Turn on the buzzer
+                GPIO.output(BUZZER_PIN, GPIO.HIGH)
+
+                # Send email notification
+                send_email(humidity)
+
+                # Wait for 10 seconds before turning off the buzzer
+                time.sleep(10)
+                GPIO.output(BUZZER_PIN, GPIO.LOW)
+
+        else:
+            print("Failed to retrieve data from the sensor")
+
+        # Delay for 2 seconds before reading the temperature again
+        time.sleep(2)
+
+except KeyboardInterrupt:
+    print("Program interrupted. Cleaning up GPIO.")
+    GPIO.cleanup()
